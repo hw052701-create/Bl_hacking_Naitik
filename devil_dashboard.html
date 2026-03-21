@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DEVIL V4.0 // WEB DASHBOARD</title>
+    <style>
+        /* Base Cyberpunk / Hacker Theme */
+        :root {
+            --bg-color: #09090b;
+            --panel-bg: #121214;
+            --text-color: #e4e4e7;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-blue: #3b82f6;
+            --border-color: #27272a;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Consolas', 'Courier New', monospace;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #000;
+            padding: 10px 20px;
+            border-bottom: 2px solid var(--accent-green);
+        }
+
+        header h1 {
+            font-size: 1.2rem;
+            color: var(--accent-green);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 5px rgba(16, 185, 129, 0.5);
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            background-color: var(--panel-bg);
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green);
+            padding: 8px 15px;
+            font-family: 'Consolas', monospace;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        button:hover {
+            background-color: var(--accent-green);
+            color: #000;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+        }
+
+        button.btn-red {
+            border-color: var(--accent-red);
+            color: var(--accent-red);
+        }
+
+        button.btn-red:hover {
+            background-color: var(--accent-red);
+            color: #fff;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+        }
+
+        button.btn-blue {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        button.btn-blue:hover {
+            background-color: var(--accent-blue);
+            color: #fff;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+
+        main {
+            display: flex;
+            flex: 1;
+            height: calc(100vh - 50px);
+        }
+
+        .panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .panel-header {
+            background-color: var(--panel-bg);
+            padding: 8px 15px;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: bold;
+            color: #a1a1aa;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        #terminal-output {
+            flex: 1;
+            background-color: #000;
+            color: #10b981;
+            padding: 15px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        #anchor {
+            padding-bottom: 10px;
+        }
+
+        .terminal-input-container {
+            display: flex;
+            background-color: #000;
+            border-top: 1px solid var(--border-color);
+            padding: 5px;
+        }
+
+        .prefix {
+            color: var(--accent-red);
+            padding: 10px;
+            font-weight: bold;
+        }
+
+        #serial-input {
+            flex: 1;
+            background-color: transparent;
+            border: none;
+            color: #fff;
+            font-family: 'Consolas', monospace;
+            font-size: 16px;
+            padding: 10px 5px;
+            outline: none;
+        }
+
+        #notepad {
+            flex: 1;
+            background-color: #09090b;
+            color: #e4e4e7;
+            border: none;
+            padding: 15px;
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: none;
+            outline: none;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #a1a1aa;
+            font-size: 12px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--accent-red);
+            box-shadow: 0 0 8px var(--accent-red);
+        }
+
+        .dot.connected {
+            background-color: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green);
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3f3f46;
+        }
+
+        .term-line {
+            display: block;
+            min-height: 1.2em;
+            margin: 0;
+            padding: 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .device-card {
+            background: rgba(18, 18, 20, 0.95);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-blue);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            animation: slideIn 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            backdrop-filter: blur(4px);
+        }
+
+        .device-card.has-name {
+            border-left-color: var(--accent-green);
+        }
+
+        .device-card.deep-scan {
+            border-left-color: #f59e0b;
+        }
+
+        .card-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .card-name {
+            font-weight: bold;
+            font-size: 1.15rem;
+            color: #fff;
+            letter-spacing: 0.5px;
+        }
+
+        .card-mac {
+            color: #a1a1aa;
+            font-family: 'Consolas', monospace;
+            font-size: 0.85rem;
+        }
+
+        .card-rssi {
+            font-weight: bold;
+            font-family: 'Consolas', monospace;
+        }
+
+        .card-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 5px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.8rem;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .detail-label {
+            color: #71717a;
+            text-transform: uppercase;
+            font-size: 0.65rem;
+            margin-bottom: 2px;
+        }
+
+        .detail-value {
+            color: #e4e4e7;
+            font-weight: 500;
+        }
+
+        .rssi-strong {
+            color: var(--accent-green);
+        }
+
+        .rssi-medium {
+            color: #f59e0b;
+        }
+
+        .rssi-weak {
+            color: var(--accent-red);
+        }
+
+        .vendor-badge {
+            background-color: rgba(59, 130, 246, 0.15);
+            color: var(--accent-blue);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .recon-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 0.85rem;
+            background-color: #000;
+            border: 1px solid var(--border-color);
+        }
+
+        .recon-table th {
+            background-color: var(--panel-bg);
+            color: #a1a1aa;
+            text-align: left;
+            padding: 10px;
+            border-bottom: 2px solid var(--accent-green);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+        }
+
+        .recon-table td {
+            padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-color);
+        }
+
+        .recon-table tr:hover {
+            background-color: rgba(255, 255, 255, 0.03);
+        }
+
+        .recon-table tr.named-row {
+            background-color: rgba(16, 185, 129, 0.05);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(-20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .pulse-new {
+            animation: pulse-glow 2s infinite;
+        }
+
+        @keyframes pulse-glow {
+            0% {
+                box-shadow: 0 0 5px rgba(16, 185, 129, 0.2);
+            }
+
+            50% {
+                box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+            }
+
+            100% {
+                box-shadow: 0 0 5px rgba(16, 185, 129, 0.2);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>SYS // DEVIL_SUITE_V4</h1>
+        <div class="status">
+            <div id="connection-dot" class="dot"></div>
+            <span id="connection-status">DISCONNECTED (PORT CLOSED)</span>
+        </div>
+        <div class="controls">
+            <button id="btn-connect" class="btn-blue">Connect ESP32 (USB)</button>
+            <button id="btn-disconnect" class="btn-red" style="display:none;">Disconnect</button>
+        </div>
+    </header>
+
+    <main>
+        <div class="panel">
+            <div class="panel-header">
+                <span>[ TERMINAL ] // RAW_SERIAL_LINK</span>
+                <button id="btn-clear" style="padding: 2px 8px; font-size: 10px;">Clear</button>
+            </div>
+            <div id="terminal-output">
+                [SYSTEM STARTUP] Waiting for Web Serial API Connection...
+                1. Plug your ESP32 into your computer via USB.
+                2. Click 'Connect ESP32' at the top right.
+                3. Select your ESP32 COM Port from the Chrome pop-up.
+                4. Ensure 'serial_ble_suite.ino' is flashed onto the board.
+                <div id="anchor"></div>
+            </div>
+            <div class="terminal-input-container">
+                <span class="prefix">DEVIL_CLI ></span>
+                <input type="text" id="serial-input"
+                    placeholder="Type S, D, P, C or Hex Commands here and press Enter..." disabled>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <span>[ INTELLIGENCE LOGS ] vulnerable_devices.md</span>
+                <button id="btn-export" class="btn-green" style="padding: 2px 8px; font-size: 10px;">Export .MD</button>
+            </div>
+            <textarea id="notepad" placeholder="# Target Device Recon Log
+Use this space to copy/paste MAC Addresses, suspicious UUIDs, and extracted PII (Battery, True Names).
+
+When you are finished attacking, click 'Export .MD' to save this entire pad directly to your computer!"></textarea>
+        </div>
+    </main>
+
+    <script>
+        let port;
+        let reader;
+        let inputDone;
+        let outputDone;
+        let inputStream;
+        let outputStream;
+
+        // --- Intelligence Engine State ---
+        let deviceRecords = [];
+
+        const btnConnect = document.getElementById('btn-connect');
+        const btnDisconnect = document.getElementById('btn-disconnect');
+        const terminalOutput = document.getElementById('terminal-output');
+        const serialInput = document.getElementById('serial-input');
+        const statusText = document.getElementById('connection-status');
+        const statusDot = document.getElementById('connection-dot');
+        const anchor = document.getElementById('anchor');
+
+        if (!("serial" in navigator)) {
+            printToTerminal("\n[ERROR] Your browser does not support the Web Serial API. Please use Google Chrome or Microsoft Edge desktop versions.", true);
+            btnConnect.disabled = true;
+        }
+
+        // --- Connection Logic ---
+        btnConnect.addEventListener('click', async () => {
+            try {
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 115200 });
+
+                statusText.innerText = "CONNECTED (115200 BAUD)";
+                statusDot.classList.add('connected');
+                btnConnect.style.display = "none";
+                btnDisconnect.style.display = "block";
+                serialInput.disabled = false;
+                serialInput.focus();
+
+                printToTerminal("\n[+] USB Serial Port Opened Successfully.", true);
+                try {
+                    const info = port.getInfo();
+                    if (info.usbVendorId) {
+                        printToTerminal(`[+] Attached Hardware: VID 0x${info.usbVendorId.toString(16).toUpperCase()} | PID 0x${info.usbProductId.toString(16).toUpperCase()}`, true);
+                    }
+                } catch (e) { }
+                printToTerminal("[!] Listening for ESP32 Target Streams...", true);
+
+                const decoder = new TextDecoderStream();
+                inputDone = port.readable.pipeTo(decoder.writable);
+                inputStream = decoder.readable;
+                reader = inputStream.getReader();
+
+                const encoder = new TextEncoderStream();
+                outputDone = encoder.readable.pipeTo(port.writable);
+                outputStream = encoder.writable;
+
+                readLoop();
+
+            } catch (err) {
+                console.error(err);
+                printToTerminal("\n[-] Connection Failed or Cancelled: " + err, true);
+            }
+        });
+
+        btnDisconnect.addEventListener('click', async () => {
+            btnDisconnect.disabled = true;
+            btnDisconnect.innerText = "Closing...";
+            await disconnectSerial();
+            btnDisconnect.disabled = false;
+            btnDisconnect.innerText = "Disconnect";
+        });
+
+        async function disconnectSerial() {
+            try {
+                // 1. Teardown Reader
+                if (reader) {
+                    await reader.cancel();
+                    await inputDone.catch(() => { });
+                    reader = null;
+                    inputDone = null;
+                }
+
+                // 2. Teardown Writer
+                if (outputStream) {
+                    await outputStream.getWriter().close();
+                    await outputDone.catch(() => { });
+                    outputStream = null;
+                    outputDone = null;
+                }
+
+                // 3. Close Port
+                if (port) {
+                    await port.close();
+                    port = null;
+                }
+            } catch (err) {
+                console.error("Disconnect error:", err);
+            } finally {
+                // Always reset UI state
+                statusText.innerText = "DISCONNECTED (PORT CLOSED)";
+                statusDot.classList.remove('connected');
+                btnConnect.style.display = "block";
+                btnDisconnect.style.display = "none";
+                serialInput.disabled = true;
+                printToTerminal("\n[-] Disconnected from ESP32.", true);
+            }
+        }
+
+        // --- Intelligence Engine: Stream Parser ---
+        let lineBuffer = "";
+        let currentTarget = null;
+        let flushTimer = null;
+
+        function handleSerialData(text) {
+            lineBuffer += text;
+
+            // Clear any existing flush timer
+            if (flushTimer) clearTimeout(flushTimer);
+
+            let lines = lineBuffer.split('\n');
+            lineBuffer = lines.pop();
+
+            // Set a timer to flush the buffer if no data comes (for prompts like "Enter choice:")
+            flushTimer = setTimeout(() => {
+                if (lineBuffer.trim()) {
+                    printToTerminal(lineBuffer, false);
+                    lineBuffer = "";
+                }
+            }, 200);
+
+            for (let line of lines) {
+                line = line.trim();
+                if (!line) continue;
+
+                // Pattern A: The Start of a V4.0 Device Block [TARGET ID: #00] -> Name
+                const afreStartMatch = line.match(/\[TARGET ID: #(\d+)\] -> (.*)/i);
+                if (afreStartMatch) {
+                    if (currentTarget) renderDeviceCard(currentTarget); // Render previous if exist
+                    currentTarget = {
+                        index: afreStartMatch[1],
+                        name: afreStartMatch[2].trim(),
+                        hasName: (afreStartMatch[2].trim() !== "[?] HIDDEN/ACTIVE MAC"),
+                        vendor: "??",
+                        type: "??",
+                        mac: "??",
+                        rssi: "??"
+                    };
+                    continue;
+                }
+
+                // Sub-Patterns: Consuming the detail rows if we are in a block
+                if (currentTarget) {
+                    if (line.includes("|- MAC Address")) {
+                        const m = line.match(/MAC Address\s*:\s*([0-9a-f:]{17})/i);
+                        if (m) currentTarget.mac = m[1].toUpperCase();
+                        continue;
+                    }
+                    if (line.includes("|- Vendor Guess")) {
+                        currentTarget.vendor = line.split(":")[1].trim();
+                        continue;
+                    }
+                    if (line.includes("|- Device Type")) {
+                        currentTarget.type = line.split(":")[1].trim();
+                        continue;
+                    }
+                    if (line.includes("|- Confidence")) {
+                        const c = line.match(/Confidence\s*:\s*(\d+)/i);
+                        if (c) currentTarget.confidence = c[1];
+                        continue;
+                    }
+                    if (line.includes("|- Signal (RSSI)")) {
+                        const r = line.match(/RSSI\):\s*(-?\d+)/i);
+                        if (r) currentTarget.rssi = r[1];
+                        continue;
+                    }
+                    // End of block detection
+                    if (line.includes("====")) {
+                        renderDeviceCard(currentTarget);
+                        updateDeviceList(currentTarget);
+                        currentTarget = null;
+                        continue;
+                    }
+                }
+
+                // Pattern C: The 'P' Print Command Trigger (V4.0 AFRE Readout)
+                if (line.includes("ADVANCED FINGERPRINT RECONNAISSANCE ENGINE") || line.includes("--- TARGET LIST ---")) {
+                    renderTargetTable();
+                    continue;
+                }
+
+                printToTerminal(line, false);
+            }
+        }
+
+        function updateDeviceList(newDev) {
+            const existing = deviceRecords.findIndex(d => d.mac === newDev.mac);
+            if (existing !== -1) {
+                deviceRecords[existing] = { ...deviceRecords[existing], ...newDev };
+            } else {
+                deviceRecords.push(newDev);
+            }
+        }
+
+        function renderDeviceCard(dev) {
+            if (!dev) return;
+            const card = document.createElement('div');
+            card.className = `device-card ${dev.hasName ? 'has-name pulse-new' : ''}`;
+            const rssiVal = parseInt(dev.rssi);
+            const rssiClass = !isNaN(rssiVal) ? (rssiVal > -60 ? 'rssi-strong' : (rssiVal > -85 ? 'rssi-medium' : 'rssi-weak')) : 'rssi-weak';
+
+            card.innerHTML = `
+                <div class="card-row">
+                    <span class="card-name">${dev.name} ${dev.hasName ? '🦾' : ''}</span>
+                    <span class="card-rssi ${rssiClass}">${dev.rssi || '??'} dBm</span>
+                </div>
+                <div class="card-mac">${dev.mac || 'UNKNOWN MAC'}</div>
+                <div class="card-details">
+                    <div class="detail-item">
+                        <span class="detail-label">Vendor / Manufacturer</span>
+                        <span class="detail-value">${dev.vendor || 'Scanning...'}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Hardware Profile</span>
+                        <span class="detail-value">${dev.type || 'Generic BLE'}</span>
+                    </div>
+                </div>
+                <div class="card-row" style="margin-top: 5px;">
+                    <span style="font-size: 0.75rem; color: #71717a;">Confidence: ${dev.confidence || '0'}%</span>
+                    <span class="vendor-badge">TARGET: #${dev.index}</span>
+                </div>
+            `;
+            terminalOutput.insertBefore(card, anchor);
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        }
+
+        function renderTargetTable() {
+            if (deviceRecords.length === 0) return;
+
+            const sorted = [...deviceRecords].sort((a, b) => {
+                if (a.hasName !== b.hasName) return b.hasName ? -1 : 1;
+                return b.rssi - a.rssi;
+            });
+
+            const table = document.createElement('table');
+            table.className = 'recon-table';
+
+            let tableHTML = `
+                <thead>
+                    <tr>
+                        <th>IDX</th>
+                        <th>NAME/PII</th>
+                        <th>MAC ADDRESS</th>
+                        <th>VENDOR/TYPE</th>
+                        <th>RSSI</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+
+            sorted.forEach(d => {
+                const rssiVal = parseInt(d.rssi);
+                const rssiClass = !isNaN(rssiVal) ? (rssiVal > -60 ? 'rssi-strong' : (rssiVal > -85 ? 'rssi-medium' : 'rssi-weak')) : 'rssi-weak';
+                tableHTML += `
+                    <tr class="${d.hasName ? 'named-row' : ''}">
+                        <td>#${d.index}</td>
+                        <td>${d.name} ${d.hasName ? '🦾' : ''}</td>
+                        <td>${d.mac}</td>
+                        <td>${d.vendor}/${d.type}</td>
+                        <td class="${rssiClass}">${d.rssi}</td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += `</tbody>`;
+            table.innerHTML = tableHTML;
+
+            const logBtn = document.createElement('button');
+            logBtn.innerText = "Log to Intelligence Pad";
+            logBtn.style.cssText = "margin-top: 10px; padding: 8px 16px; background: var(--accent-blue); color: white; border: none; border-radius: 4px; cursor: pointer; font-family: 'Inter', sans-serif; font-weight: bold; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);";
+
+            logBtn.onclick = () => {
+                let report = `\n--- RECON REPORT [${new Date().toLocaleTimeString()}] ---\n`;
+                sorted.forEach(d => {
+                    report += `[#${d.index}] ${d.name} | MAC: ${d.mac} | RSSI: ${d.rssi} | ${d.vendor}/${d.type}\n`;
+                });
+                intelNotepad.value += report;
+                intelNotepad.scrollTop = intelNotepad.scrollHeight;
+                logBtn.innerText = "Logged!";
+                setTimeout(() => logBtn.innerText = "Log to Intelligence Pad", 2000);
+            };
+
+            const container = document.createElement('div');
+            container.style.margin = "20px 0";
+            container.appendChild(table);
+            container.appendChild(logBtn);
+
+            terminalOutput.insertBefore(container, anchor);
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+            printToTerminal("[!] INTELLIGENCE TABLE GENERATED.", true);
+        }
+
+        // --- Read Loop ---
+        async function readLoop() {
+            while (true) {
+                const { value, done } = await reader.read();
+                if (value) handleSerialData(value);
+                if (done) {
+                    reader.releaseLock();
+                    break;
+                }
+            }
+        }
+
+        // --- Write Loop ---
+        async function writeToSerial(data) {
+            if (outputStream) {
+                const writer = outputStream.getWriter();
+                await writer.write(data + '\n');
+                writer.releaseLock();
+            }
+        }
+
+        serialInput.addEventListener('keypress', async (e) => {
+            if (e.key === 'Enter') {
+                const command = serialInput.value;
+                printToTerminal('\nDEVIL_CLI > ' + command, true);
+                await writeToSerial(command);
+                serialInput.value = '';
+            }
+        });
+
+        function printToTerminal(text, overrideColor = false) {
+            // Filter out non-printable/garbage characters (common during ESP32 boot)
+            const cleanText = text.replace(/[^\x20-\x7E\n\r\t]/g, "").trim();
+            if (!cleanText && text.trim().length === 0) return;
+
+            const div = document.createElement('div');
+            div.className = 'term-line';
+            div.textContent = cleanText;
+
+            if (overrideColor) div.style.color = "#ef4444";
+            else if (cleanText.includes("[-]") || cleanText.includes("Exception")) div.style.color = "#ef4444";
+            else if (cleanText.includes("[+]") || cleanText.includes("[SUCCESS]")) div.style.color = "#10b981";
+            else if (cleanText.includes("[*]") || cleanText.includes("[!]")) div.style.color = "#3b82f6";
+            else div.style.color = "#e4e4e7";
+
+            terminalOutput.insertBefore(div, anchor);
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        }
+
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            terminalOutput.innerHTML = '<div id="anchor"></div>';
+            const mainMenu = `
+--- DEVIL SUITE: MAIN MENU ---
+[S] - Fast Scan (5 Seconds)
+[D] - DEEP SCAN (Force Resolve Hidden Names) [15s]
+[P] - Print Target Reconnaissance Data (AFRE Readout)
+[C] - CONNECT to Device (Interactive Shell)
+==============================
+Enter choice (S/D/P/C): `;
+            printToTerminal(mainMenu, false);
+        });
+
+        document.getElementById('btn-export').addEventListener('click', () => {
+            const textToSave = document.getElementById('notepad').value;
+            const blob = new Blob([textToSave], { type: "text/markdown" });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            const date = new Date();
+            const dateStr = date.getFullYear() + "-" + (date.getMonth() + 1) + "-" + date.getDate();
+            a.download = `DEVIL_Recon_Log_${dateStr}.md`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        });
+    </script>
+</body>
+
+</html>
