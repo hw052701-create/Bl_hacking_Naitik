@@ -192,6 +192,71 @@
             }
         }
 
+        /* --- AUTH OVERLAY --- */
+        #auth-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(9, 9, 11, 0.95);
+            backdrop-filter: blur(20px);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.5s ease;
+        }
+
+        #auth-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(1.1);
+        }
+
+        .auth-card {
+            background: #18181b;
+            border: 1px solid var(--border-color);
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            width: 380px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .auth-card h2 {
+            color: var(--accent-blue);
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+
+        .auth-card p {
+            color: #71717a;
+            font-size: 0.9rem;
+            margin-bottom: 25px;
+        }
+
+        .auth-input {
+            width: 100%;
+            background: #09090b;
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            color: #fff;
+            font-family: 'Consolas', monospace;
+            text-align: center;
+            font-size: 1.2rem;
+            letter-spacing: 4px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+        }
+
+        .auth-input:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+            outline: none;
+        }
+
         .status {
             display: flex;
             align-items: center;
@@ -402,16 +467,28 @@
 
 <body>
     <header>
-        <h1>SYS // DEVIL_SUITE_V4</h1>
+        <h1>CHAKRA // RECON SUITE V1.0</h1>
         <div class="status">
+            <span style="color:var(--accent-blue)">BY NAITIK DHIMAN</span>
             <div id="connection-dot" class="dot"></div>
             <span id="connection-status">DISCONNECTED (PORT CLOSED)</span>
         </div>
         <div class="controls">
-            <button id="btn-connect" class="btn-blue">Connect ESP32 (USB)</button>
+            <button id="btn-connect" class="btn-blue">Connect Hardware</button>
             <button id="btn-disconnect" class="btn-red" style="display:none;">Disconnect</button>
         </div>
     </header>
+
+    <!-- AUTH OVERLAY -->
+    <div id="auth-overlay" class="hidden">
+        <div class="auth-card">
+            <h2>CHAKRA UNLOCK</h2>
+            <p>Accessing Hardware Vault... Enter Passcode.</p>
+            <input type="password" id="auth-passcode" class="auth-input" maxlength="4" placeholder="****">
+            <button id="btn-unlock" style="width:100%" class="btn-blue">Verify Credentials</button>
+            <div id="auth-message" style="margin-top: 15px; font-size: 0.8rem; color: #ef4444;"></div>
+        </div>
+    </div>
 
     <main>
         <div class="panel">
@@ -549,9 +626,27 @@ When you are finished attacking, click 'Export .MD' to save this entire pad dire
                 btnConnect.style.display = "block";
                 btnDisconnect.style.display = "none";
                 serialInput.disabled = true;
-                printToTerminal("\n[-] Disconnected from ESP32.", true);
+                printToTerminal("\n[-] Disconnected from Hardware.", true);
+                document.getElementById('auth-overlay').classList.add('hidden');
             }
         }
+
+        // --- Auth Handshake ---
+        const btnUnlock = document.getElementById('btn-unlock');
+        const authPasscode = document.getElementById('auth-passcode');
+        const authMessage = document.getElementById('auth-message');
+
+        btnUnlock.addEventListener('click', async () => {
+            const code = authPasscode.value;
+            if (!code) return;
+            authMessage.innerText = "Verifying...";
+            await writeToSerial("AUTH " + code);
+            authPasscode.value = "";
+        });
+
+        authPasscode.addEventListener('keypress', async (e) => {
+            if (e.key === 'Enter') btnUnlock.click();
+        });
 
         // --- Intelligence Engine: Stream Parser ---
         let lineBuffer = "";
@@ -635,9 +730,23 @@ When you are finished attacking, click 'Export .MD' to save this entire pad dire
                 }
 
                 // Pattern C: The 'P' Print Command Trigger (V4.0 AFRE Readout)
-                if (line.includes("ADVANCED FINGERPRINT RECONNAISSANCE ENGINE") || line.includes("--- TARGET LIST ---")) {
+                if (line.includes("ADVANCED FINGERPRINT RECONNAISSANCE ENGINE") || line.includes("--- TARGET LIST ---") || line.includes("CHAKRA")) {
                     renderTargetTable();
                     continue;
+                }
+
+                // SECURITY: Auth Success Detection
+                if (line.includes("AUTH_SUCCESS")) {
+                    document.getElementById('auth-overlay').classList.add('hidden');
+                    return;
+                }
+                if (line.includes("AUTH_REQUIRED")) {
+                    document.getElementById('auth-overlay').classList.remove('hidden');
+                    return;
+                }
+                if (line.includes("AUTH_FAIL")) {
+                    document.getElementById('auth-message').innerText = "[!] INVALID PASSCODE ACCESS DENIED";
+                    return;
                 }
 
                 printToTerminal(line, false);
