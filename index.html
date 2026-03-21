@@ -161,13 +161,35 @@
             flex: 1;
             background-color: #09090b;
             color: #e4e4e7;
-            border: none;
+            border: 1px solid var(--border-color);
             padding: 15px;
             font-family: 'Consolas', monospace;
             font-size: 14px;
             line-height: 1.5;
             resize: none;
             outline: none;
+            transition: all 0.3s;
+        }
+
+        #notepad.updated {
+            animation: text-pulse 1s;
+        }
+
+        @keyframes text-pulse {
+            0% {
+                border-color: var(--border-color);
+                box-shadow: none;
+            }
+
+            50% {
+                border-color: var(--accent-green);
+                box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+            }
+
+            100% {
+                border-color: var(--border-color);
+                box-shadow: none;
+            }
         }
 
         .status {
@@ -560,7 +582,11 @@ When you are finished attacking, click 'Export .MD' to save this entire pad dire
                 // Pattern A: The Start of a V4.0 Device Block [TARGET ID: #00] -> Name
                 const afreStartMatch = line.match(/\[TARGET ID: #(\d+)\] -> (.*)/i);
                 if (afreStartMatch) {
-                    if (currentTarget) renderDeviceCard(currentTarget); // Render previous if exist
+                    // Update previous to global list before starting new
+                    if (currentTarget) {
+                        renderDeviceCard(currentTarget);
+                        updateDeviceList(currentTarget);
+                    }
                     currentTarget = {
                         index: afreStartMatch[1],
                         name: afreStartMatch[2].trim(),
@@ -568,7 +594,8 @@ When you are finished attacking, click 'Export .MD' to save this entire pad dire
                         vendor: "??",
                         type: "??",
                         mac: "??",
-                        rssi: "??"
+                        rssi: "??",
+                        confidence: "0"
                     };
                     continue;
                 }
@@ -700,24 +727,47 @@ When you are finished attacking, click 'Export .MD' to save this entire pad dire
             table.innerHTML = tableHTML;
 
             const logBtn = document.createElement('button');
-            logBtn.innerText = "Log to Intelligence Pad";
-            logBtn.style.cssText = "margin-top: 10px; padding: 8px 16px; background: var(--accent-blue); color: white; border: none; border-radius: 4px; cursor: pointer; font-family: 'Inter', sans-serif; font-weight: bold; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);";
+            logBtn.innerText = "Log to Pad";
+            logBtn.style.cssText = "margin-top: 10px; margin-right: 8px; padding: 8px 16px; background: var(--accent-green); color: black; border: none; border-radius: 4px; cursor: pointer; font-family: 'Inter', sans-serif; font-weight: bold;";
 
             logBtn.onclick = () => {
                 let report = `\n--- RECON REPORT [${new Date().toLocaleTimeString()}] ---\n`;
                 sorted.forEach(d => {
                     report += `[#${d.index}] ${d.name} | MAC: ${d.mac} | RSSI: ${d.rssi} | ${d.vendor}/${d.type}\n`;
                 });
-                intelNotepad.value += report;
-                intelNotepad.scrollTop = intelNotepad.scrollHeight;
+                const notepad = document.getElementById('notepad');
+                notepad.value += report;
+                notepad.classList.add('updated');
+                setTimeout(() => notepad.classList.remove('updated'), 1000);
+                notepad.scrollTop = notepad.scrollHeight;
                 logBtn.innerText = "Logged!";
-                setTimeout(() => logBtn.innerText = "Log to Intelligence Pad", 2000);
+                setTimeout(() => logBtn.innerText = "Log to Pad", 2000);
+            };
+
+            const copyBtn = document.createElement('button');
+            copyBtn.innerText = "Copy to Clipboard";
+            copyBtn.style.cssText = "margin-top: 10px; padding: 8px 16px; background: var(--accent-blue); color: white; border: none; border-radius: 4px; cursor: pointer; font-family: 'Inter', sans-serif; font-weight: bold;";
+
+            copyBtn.onclick = async () => {
+                let text = "";
+                sorted.forEach(d => {
+                    text += `ID: #${d.index} | ${d.name} | MAC: ${d.mac} | RSSI: ${d.rssi} | ${d.vendor}/${d.type}\n`;
+                });
+                try {
+                    await navigator.clipboard.writeText(text);
+                    copyBtn.innerText = "Copied!";
+                    setTimeout(() => copyBtn.innerText = "Copy to Clipboard", 2000);
+                } catch (err) {
+                    copyBtn.innerText = "Error!";
+                    setTimeout(() => copyBtn.innerText = "Copy to Clipboard", 2000);
+                }
             };
 
             const container = document.createElement('div');
             container.style.margin = "20px 0";
             container.appendChild(table);
             container.appendChild(logBtn);
+            container.appendChild(copyBtn);
 
             terminalOutput.insertBefore(container, anchor);
             terminalOutput.scrollTop = terminalOutput.scrollHeight;
