@@ -674,13 +674,6 @@ When you are finished attacking, click 'Export .MD' to save this entire pad dire
                 line = line.trim();
                 if (!line) continue;
 
-                // --- Sync Logic: Clear list when a new Scan starts on Hardware ---
-                if (line.includes("Initializing AFRE Scan")) {
-                    deviceRecords = [];
-                    // Keep the terminal but maybe add a divider
-                    printToTerminal("\n--- NEW SCAN SESSION DETECTED // FLUSHING LOCAL CACHE ---\n", true);
-                }
-
                 // Pattern A: The Start of a V4.0 Device Block [TARGET ID: #00] -> Name
                 const afreStartMatch = line.match(/\[TARGET ID: #(\d+)\] -> (.*)/i);
                 if (afreStartMatch) {
