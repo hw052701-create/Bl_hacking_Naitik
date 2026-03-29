@@ -674,6 +674,11 @@ When you are finished attacking, click 'Export .MD' to save this entire pad dire
                 line = line.trim();
                 if (!line) continue;
 
+                // Security & Memory: Clear old table array upon starting a new Scan
+                if (line.includes("Initializing AFRE Scan")) {
+                    deviceRecords = [];
+                }
+
                 // Pattern A: The Start of a V4.0 Device Block [TARGET ID: #00] -> Name
                 const afreStartMatch = line.match(/\[TARGET ID: #(\d+)\] -> (.*)/i);
                 if (afreStartMatch) {
