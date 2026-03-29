@@ -462,6 +462,16 @@
                 box-shadow: 0 0 5px rgba(16, 185, 129, 0.2);
             }
         }
+
+        .sub-badge {
+            background-color: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            display: inline-block;
+        }
     </style>
 </head>
 
@@ -511,15 +521,40 @@
             </div>
         </div>
 
+        <div class="panel" id="notify-panel" style="display:none; border-right: 1px solid var(--border-color);">
+            <div class="panel-header">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span>[ LIVE INTERCEPT ]</span>
+                    <div id="subs-status-container" style="display:flex; gap: 5px;"></div>
+                </div>
+                <button id="btn-clear-notify" style="padding: 2px 8px; font-size: 10px;">Clear</button>
+            </div>
+            <div id="notify-output"
+                style="flex:1; background:#000; color:#10b981; padding:15px; overflow-y:auto; font-size:14px; white-space:pre-wrap; border-top:1px solid var(--border-color)">
+                <div id="notify-anchor"></div>
+            </div>
+        </div>
+
         <div class="panel">
             <div class="panel-header">
                 <span>[ INTELLIGENCE LOGS ] vulnerable_devices.md</span>
-                <button id="btn-export" class="btn-green" style="padding: 2px 8px; font-size: 10px;">Export .MD</button>
+                <div style="display:flex; gap:5px;">
+                    <button id="btn-hl-red"
+                        style="padding: 2px 8px; font-size: 10px; background:var(--accent-red); color:#fff; border:none; cursor:pointer;"
+                        title="Highlight Red">HL Red</button>
+                    <button id="btn-hl-yel"
+                        style="padding: 2px 8px; font-size: 10px; border:none; background:#f59e0b; color:#fff; cursor:pointer;"
+                        title="Highlight Yellow">HL Yel</button>
+                    <button id="btn-export" class="btn-green" style="padding: 2px 8px; font-size: 10px;">Export
+                        .MD</button>
+                </div>
             </div>
-            <textarea id="notepad" placeholder="# Target Device Recon Log
-Use this space to copy/paste MAC Addresses, suspicious UUIDs, and extracted PII (Battery, True Names).
+            <div id="notepad" contenteditable="true"
+                style="flex:1; background:#09090b; color:#e4e4e7; padding:15px; font-family:'Consolas', monospace; font-size:14px; overflow-y:auto; outline:none; white-space: pre-wrap;">
+                # Target Device Recon Log
+                Use this space to copy/paste MAC Addresses, suspicious UUIDs, and extracted PII.
 
-When you are finished attacking, click 'Export .MD' to save this entire pad directly to your computer!"></textarea>
+                Highlight important intel using the HL buttons, then click 'Export .MD' to save!</div>
         </div>
     </main>
 
@@ -533,6 +568,27 @@ When you are finished attacking, click 'Export .MD' to save this entire pad dire
 
         // --- Intelligence Engine State ---
         let deviceRecords = [];
+        let liveSubscriptions = new Set();
+        let isNotifyingState = false;
+
+        const notifyPanel = document.getElementById('notify-panel');
+        const notifyOutput = document.getElementById('notify-output');
+        const subsStatusContainer = document.getElementById('subs-status-container');
+        const notifyAnchor = document.getElementById('notify-anchor');
+
+        function updateSubsUI() {
+            if (liveSubscriptions.size > 0) {
+                notifyPanel.style.display = 'flex';
+                let html = '';
+                liveSubscriptions.forEach(uuid => {
+                    html += `<span class="sub-badge pulse-new">${uuid}</span>`;
+                });
+                subsStatusContainer.innerHTML = html;
+            } else {
+                notifyPanel.style.display = 'none';
+                subsStatusContainer.innerHTML = '';
+            }
+        }
 
         const btnConnect = document.getElementById('btn-connect');
         const btnDisconnect = document.getElementById('btn-disconnect');
@@ -628,6 +684,10 @@ When you are finished attacking, click 'Export .MD' to save this entire pad dire
                 serialInput.disabled = true;
                 printToTerminal("\n[-] Disconnected from Hardware.", true);
                 document.getElementById('auth-overlay').classList.add('hidden');
+
+                liveSubscriptions.clear();
+                updateSubsUI();
+                notifyOutput.innerHTML = '<div id="notify-anchor"></div>';
             }
         }
 
@@ -677,6 +737,21 @@ When you are finished attacking, click 'Export .MD' to save this entire pad dire
                 // Security & Memory: Clear old table array upon starting a new Scan
                 if (line.includes("Initializing AFRE Scan")) {
                     deviceRecords = [];
+                }
+
+                // Subscriptions Intercept & Routing
+                const subMatch = line.match(/\[\+\] Notification pipeline ACTIVE on ([a-z0-9-]+)/i);
+                if (subMatch) {
+                    liveSubscriptions.add(subMatch[1]);
+                    updateSubsUI();
+                }
+
+                if (line.includes("[NOTIFY]")) isNotifyingState = true;
+
+                if (isNotifyingState) {
+                    printToTerminal(line, false, true); // route intercept to sub-terminal
+                    if (line.includes("CHAKRA_CLI >")) isNotifyingState = false;
+                    continue;
                 }
 
                 // Pattern A: The Start of a V4.0 Device Block [TARGET ID: #00] -> Name
@@ -918,7 +993,7 @@ When you are finished attacking, click 'Export .MD' to save this entire pad dire
             }
         });
 
-        function printToTerminal(text, overrideColor = false) {
+        function printToTerminal(text, overrideColor = false, isNotifyStream = false) {
             // Keep \x1B for ANSI parsing, filter out rest of the garbage bits
             const cleanText = text.replace(/[^\x1B\x20-\x7E\n\r\t]/g, "").trim();
             if (!cleanText && text.trim().length === 0) return;
@@ -969,9 +1044,29 @@ When you are finished attacking, click 'Export .MD' to save this entire pad dire
                 else div.style.color = "#e4e4e7";
             }
 
-            terminalOutput.insertBefore(div, anchor);
-            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+            if (isNotifyStream) {
+                notifyOutput.insertBefore(div, notifyAnchor);
+                notifyOutput.scrollTop = notifyOutput.scrollHeight;
+            } else {
+                terminalOutput.insertBefore(div, anchor);
+                terminalOutput.scrollTop = terminalOutput.scrollHeight;
+            }
         }
+
+        // --- Highlighters for Intel Notepad ---
+        document.getElementById('btn-hl-red').addEventListener('click', () => {
+            document.execCommand('hiliteColor', false, 'rgba(239,68,68,0.4)');
+            document.execCommand('backColor', false, 'rgba(239,68,68,0.4)');
+        });
+
+        document.getElementById('btn-hl-yel').addEventListener('click', () => {
+            document.execCommand('hiliteColor', false, 'rgba(245,158,11,0.4)');
+            document.execCommand('backColor', false, 'rgba(245,158,11,0.4)');
+        });
+
+        document.getElementById('btn-clear-notify').addEventListener('click', () => {
+            notifyOutput.innerHTML = '<div id="notify-anchor"></div>';
+        });
 
         document.getElementById('btn-clear').addEventListener('click', () => {
             terminalOutput.innerHTML = '<div id="anchor"></div>';
@@ -987,7 +1082,7 @@ Enter choice (S/D/P/C): `;
         });
 
         document.getElementById('btn-export').addEventListener('click', () => {
-            const textToSave = document.getElementById('notepad').value;
+            const textToSave = document.getElementById('notepad').innerText;
             const blob = new Blob([textToSave], { type: "text/markdown" });
             const a = document.createElement("a");
             a.href = URL.createObjectURL(blob);
