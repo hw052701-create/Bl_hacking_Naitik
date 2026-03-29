@@ -919,19 +919,55 @@ When you are finished attacking, click 'Export .MD' to save this entire pad dire
         });
 
         function printToTerminal(text, overrideColor = false) {
-            // Filter out non-printable/garbage characters (common during ESP32 boot)
-            const cleanText = text.replace(/[^\x20-\x7E\n\r\t]/g, "").trim();
+            // Keep \x1B for ANSI parsing, filter out rest of the garbage bits
+            const cleanText = text.replace(/[^\x1B\x20-\x7E\n\r\t]/g, "").trim();
             if (!cleanText && text.trim().length === 0) return;
 
             const div = document.createElement('div');
             div.className = 'term-line';
-            div.textContent = cleanText;
 
-            if (overrideColor) div.style.color = "#ef4444";
-            else if (cleanText.includes("[-]") || cleanText.includes("Exception")) div.style.color = "#ef4444";
-            else if (cleanText.includes("[+]") || cleanText.includes("[SUCCESS]")) div.style.color = "#10b981";
-            else if (cleanText.includes("[*]") || cleanText.includes("[!]")) div.style.color = "#3b82f6";
-            else div.style.color = "#e4e4e7";
+            if (overrideColor) {
+                div.style.color = "#ef4444";
+                div.textContent = cleanText.replace(/\x1B\[[0-9;]*m/g, ""); // strip ANSI if overridden
+            } else if (cleanText.includes('\x1B')) {
+                // Advanced ANSI CSS Parser for ESP32 Dashboard
+                let html = "";
+                const parts = cleanText.split(/(\x1B\[[0-9;]*m)/);
+                let activeStyles = {};
+
+                for (let part of parts) {
+                    if (part.startsWith('\x1B[')) {
+                        const code = part.replace(/[^0-9]/g, '');
+
+                        if (code === "0" || code === "") {
+                            activeStyles = {}; // RESET
+                        } else if (code === "31") activeStyles.color = 'var(--accent-red)';
+                        else if (code === "32") activeStyles.color = 'var(--accent-green)';
+                        else if (code === "33") activeStyles.color = '#f59e0b';
+                        else if (code === "36") activeStyles.color = 'var(--accent-blue)';
+                        else if (code === "37") activeStyles.color = 'var(--text-color)';
+                        else if (code === "1") activeStyles.fontWeight = 'bold';
+
+                    } else if (part.length > 0) {
+                        // Apply styles to string block
+                        let styleStr = "";
+                        if (activeStyles.color) styleStr += `color:${activeStyles.color};`;
+                        if (activeStyles.fontWeight) styleStr += `font-weight:${activeStyles.fontWeight};`;
+
+                        const escaped = part.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                        if (styleStr) html += `<span style="${styleStr}">${escaped}</span>`;
+                        else html += escaped;
+                    }
+                }
+                div.innerHTML = html;
+            } else {
+                // Fallback styling for non-ANSI normal lines
+                div.textContent = cleanText;
+                if (cleanText.includes("[-]") || cleanText.includes("Exception")) div.style.color = "#ef4444";
+                else if (cleanText.includes("[+]") || cleanText.includes("[SUCCESS]")) div.style.color = "#10b981";
+                else if (cleanText.includes("[*]") || cleanText.includes("[!]")) div.style.color = "#3b82f6";
+                else div.style.color = "#e4e4e7";
+            }
 
             terminalOutput.insertBefore(div, anchor);
             terminalOutput.scrollTop = terminalOutput.scrollHeight;
