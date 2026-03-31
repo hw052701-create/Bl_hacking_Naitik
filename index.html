@@ -95,6 +95,28 @@
             box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
         }
 
+        button.btn-yellow {
+            border-color: #f59e0b;
+            color: #f59e0b;
+        }
+
+        button.btn-yellow:hover {
+            background-color: #f59e0b;
+            color: #fff;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+        }
+
+        button.btn-purple {
+            border-color: #a855f7;
+            color: #a855f7;
+        }
+
+        button.btn-purple:hover {
+            background-color: #a855f7;
+            color: #fff;
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+        }
+
         main {
             display: flex;
             flex: 1;
@@ -477,14 +499,19 @@
 
 <body>
     <header>
-        <h1>CHAKRA // RECON SUITE V1.0</h1>
-        <div class="status">
-            <span style="color:var(--accent-blue)">BY NAITIK DHIMAN</span>
-            <div id="connection-dot" class="dot"></div>
-            <span id="connection-status">DISCONNECTED (PORT CLOSED)</span>
-        </div>
+        <h1>CHAKRA // RECON SUITE V1.2</h1>
         <div class="controls">
-            <button id="btn-connect" class="btn-blue">Connect Hardware</button>
+            <div id="connection-status"
+                style="font-size: 0.7rem; color: #71717a; text-align: right; margin-right: 10px;">
+                <div style="display: flex; align-items: center; justify-content: flex-end; gap: 5px;">
+                    <span id="connection-dot"
+                        style="width: 8px; height: 8px; background: #3f3f46; border-radius: 50%;"></span>
+                    STATUS: DISCONNECTED
+                </div>
+            </div>
+            <button id="btn-ninja" class="btn-yellow" style="display:none;">Ninja Mode</button>
+            <button id="btn-sniper" class="btn-purple" style="display:none;">Sniper Mode</button>
+            <button id="btn-connect">Connect ESP32</button>
             <button id="btn-disconnect" class="btn-red" style="display:none;">Disconnect</button>
         </div>
     </header>
@@ -613,6 +640,8 @@
                 statusDot.classList.add('connected');
                 btnConnect.style.display = "none";
                 btnDisconnect.style.display = "block";
+                document.getElementById('btn-ninja').style.display = "block";
+                document.getElementById('btn-sniper').style.display = "block";
                 serialInput.disabled = false;
                 serialInput.focus();
 
@@ -681,6 +710,8 @@
                 statusDot.classList.remove('connected');
                 btnConnect.style.display = "block";
                 btnDisconnect.style.display = "none";
+                document.getElementById('btn-ninja').style.display = "none";
+                document.getElementById('btn-sniper').style.display = "none";
                 serialInput.disabled = true;
                 printToTerminal("\n[-] Disconnected from Hardware.", true);
                 document.getElementById('auth-overlay').classList.add('hidden');
@@ -1090,6 +1121,23 @@ Enter choice (S/D/P/C): `;
             a.click();
             URL.revokeObjectURL(a.href);
         });
+
+        document.getElementById('btn-ninja').addEventListener('click', () => {
+            sendSerial('N');
+        });
+
+        document.getElementById('btn-sniper').addEventListener('click', () => {
+            // Toggles Sniper (Coded PHY) - Requires 'X' in firmware
+            sendSerial('X');
+        });
+
+        async function sendSerial(text) {
+            if (outputStream) {
+                const writer = outputStream.getWriter();
+                await writer.write(text + "\n");
+                writer.releaseLock();
+            }
+        }
     </script>
 </body>
 
