@@ -746,11 +746,9 @@
                     updateSubsUI();
                 }
 
-                if (line.includes("[NOTIFY]")) isNotifyingState = true;
-
-                if (isNotifyingState) {
-                    printToTerminal(line, false, true); // route intercept to sub-terminal
-                    if (line.includes("CHAKRA_CLI >")) isNotifyingState = false;
+                // Surgical Intercept Routing (Non-Greedy)
+                if (line.includes("[!] [NOTIFY]") || line.includes("[!] HEX:")) {
+                    printToTerminal(line, false, true); // route to intercept panel
                     continue;
                 }
 
