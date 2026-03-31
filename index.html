@@ -671,11 +671,6 @@
 
                 readLoop();
 
-                // Trigger Hardware Discovery Query
-                setTimeout(async () => {
-                    await writeToSerial("?");
-                }, 800);
-
             } catch (err) {
                 console.error(err);
                 printToTerminal("\n[-] Connection Failed or Cancelled: " + err, true);
