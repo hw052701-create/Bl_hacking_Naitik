@@ -102,10 +102,37 @@
         }
 
         .panel {
-            flex: 1;
+            min-width: 200px;
             display: flex;
             flex-direction: column;
             border-right: 1px solid var(--border-color);
+        }
+
+        /* --- RESIZER BAR --- */
+        .resizer {
+            width: 8px;
+            background-color: var(--panel-bg);
+            cursor: col-resize;
+            transition: background-color 0.3s;
+            position: relative;
+            z-index: 10;
+            border-left: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+        }
+
+        .resizer:hover {
+            background-color: var(--accent-blue);
+            box-shadow: 0 0 10px var(--accent-blue);
+        }
+
+        .resizer::after {
+            content: '⋮';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #3f3f46;
+            font-size: 14px;
         }
 
         .panel-header {
@@ -500,62 +527,76 @@
         </div>
     </div>
 
-    <main>
-        <div class="panel">
-            <div class="panel-header">
-                <span>[ TERMINAL ] // RAW_SERIAL_LINK</span>
-                <button id="btn-clear" style="padding: 2px 8px; font-size: 10px;">Clear</button>
-            </div>
-            <div id="terminal-output">
-                [SYSTEM STARTUP] Waiting for Web Serial API Connection...
-                1. Plug your ESP32 into your computer via USB.
-                2. Click 'Connect ESP32' at the top right.
-                3. Select your ESP32 COM Port from the Chrome pop-up.
-                4. Ensure 'serial_ble_suite.ino' is flashed onto the board.
-                <div id="anchor"></div>
-            </div>
-            <div class="terminal-input-container">
-                <span class="prefix">DEVIL_CLI ></span>
-                <input type="text" id="serial-input"
-                    placeholder="Type S, D, P, C or Hex Commands here and press Enter..." disabled>
-            </div>
-        </div>
-
-        <div class="panel" id="notify-panel" style="display:none; border-right: 1px solid var(--border-color);">
-            <div class="panel-header">
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <span>[ LIVE INTERCEPT ]</span>
-                    <div id="subs-status-container" style="display:flex; gap: 5px;"></div>
+    <main style="display: flex; width: 100%; height: calc(100vh - 55px); overflow: hidden;">
+        <!-- LEFT REGION: TERMINALS -->
+        <div id="region-left" style="flex: 65; display: flex; flex-direction: column; min-width: 400px;">
+            <div class="panel" style="flex: 1; border-right: none;">
+                <div class="panel-header">
+                    <span>[ TERMINAL ] // RAW_SERIAL_LINK</span>
+                    <button id="btn-clear" style="padding: 2px 8px; font-size: 10px;">Clear</button>
                 </div>
-                <button id="btn-clear-notify" style="padding: 2px 8px; font-size: 10px;">Clear</button>
-            </div>
-            <div id="notify-output"
-                style="flex:1; background:#000; color:#10b981; padding:15px; overflow-y:auto; font-size:14px; white-space:pre-wrap; border-top:1px solid var(--border-color)">
-                <div id="notify-anchor"></div>
-            </div>
-        </div>
-
-        <div class="panel">
-            <div class="panel-header">
-                <span>[ INTELLIGENCE LOGS ] vulnerable_devices.md</span>
-                <div style="display:flex; gap:5px;">
-                    <button id="btn-hl-red"
-                        style="padding: 2px 8px; font-size: 10px; background:var(--accent-red); color:#fff; border:none; cursor:pointer;"
-                        title="Highlight Red">HL Red</button>
-                    <button id="btn-hl-yel"
-                        style="padding: 2px 8px; font-size: 10px; border:none; background:#f59e0b; color:#fff; cursor:pointer;"
-                        title="Highlight Yellow">HL Yel</button>
-                    <button id="btn-export" class="btn-green" style="padding: 2px 8px; font-size: 10px;">Export
-                        .MD</button>
+                <div id="terminal-output">
+                    [SYSTEM STARTUP] Waiting for Web Serial API Connection...
+                    <div id="anchor"></div>
+                </div>
+                <div class="terminal-input-container">
+                    <span class="prefix">DEVIL_CLI ></span>
+                    <input type="text" id="serial-input"
+                        placeholder="Type S, D, P, C or Hex Commands here and press Enter..." disabled>
                 </div>
             </div>
-            <div id="notepad" contenteditable="true"
-                style="flex:1; background:#09090b; color:#e4e4e7; padding:15px; font-family:'Consolas', monospace; font-size:14px; overflow-y:auto; outline:none; white-space: pre-wrap;">
-                # Target Device Recon Log
-                Use this space to copy/paste MAC Addresses, suspicious UUIDs, and extracted PII.
 
-                Highlight important intel using the HL buttons, then click 'Export .MD' to save!</div>
+            <div class="panel" id="notify-panel"
+                style="display:none; flex: 0.8; border-top: 2px solid var(--accent-green); border-right: none;">
+                <div class="panel-header">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span>[ LIVE INTERCEPT ]</span>
+                        <div id="subs-status-container" style="display:flex; gap: 5px;"></div>
+                    </div>
+                    <button id="btn-clear-notify" style="padding: 2px 8px; font-size: 10px;">Clear</button>
+                </div>
+                <div id="notify-output"
+                    style="flex:1; background:#000; color:#10b981; padding:15px; overflow-y:auto; font-size:14px; white-space:pre-wrap;">
+                    <div id="notify-anchor"></div>
+                </div>
+            </div>
         </div>
+
+        <!-- THE RESIZER -->
+        <div class="resizer" id="main-resizer"></div>
+
+        <!-- RIGHT REGION: INTEL -->
+        <div id="region-right" style="flex: 35; display: flex; flex-direction: column; min-width: 300px;">
+            <div class="panel" style="flex: 1; border-right: none;">
+                <div class="panel-header">
+                    <span>[ INTELLIGENCE LOGS ] vulnerable_devices.md</span>
+                    <div style="display:flex; gap:3px;">
+                        <button id="btn-hl-red" class="btn-tool"
+                            style="background:var(--accent-red); color:#fff; border:none; cursor:pointer; width:12px; height:12px; border-radius:50%;"
+                            title="Critical Threat"></button>
+                        <button id="btn-hl-yel" class="btn-tool"
+                            style="background:#f59e0b; color:#fff; border:none; cursor:pointer; width:12px; height:12px; border-radius:50%;"
+                            title="Warning"></button>
+                        <button id="btn-hl-grn" class="btn-tool"
+                            style="background:var(--accent-green); color:#fff; border:none; cursor:pointer; width:12px; height:12px; border-radius:50%;"
+                            title="Flag/Safe"></button>
+                        <button id="btn-hl-blu" class="btn-tool"
+                            style="background:var(--accent-blue); color:#fff; border:none; cursor:pointer; width:12px; height:12px; border-radius:50%;"
+                            title="Info/Node"></button>
+                        <button id="btn-hl-pur" class="btn-tool"
+                            style="background:#a855f7; color:#fff; border:none; cursor:pointer; width:12px; height:12px; border-radius:50%;"
+                            title="Secret/Level"></button>
+                        <button id="btn-export" class="btn-green"
+                            style="padding: 2px 8px; font-size: 10px; margin-left:5px;">Export</button>
+                    </div>
+                </div>
+                <div id="notepad" contenteditable="true"
+                    style="flex:1; background:#09090b; color:#e4e4e7; padding:15px; font-family:'Consolas', monospace; font-size:14px; overflow-y:auto; outline:none; white-space: pre-wrap;">
+                    # Target Device Recon Log
+                    Use this space to copy/paste MAC Addresses, suspicious UUIDs, and extracted PII.
+
+                    Highlight important intel using the HL buttons, then click 'Export .MD' to save!</div>
+            </div>
     </main>
 
     <script>
@@ -1052,14 +1093,47 @@
         }
 
         // --- Highlighters for Intel Notepad ---
-        document.getElementById('btn-hl-red').addEventListener('click', () => {
-            document.execCommand('hiliteColor', false, 'rgba(239,68,68,0.4)');
-            document.execCommand('backColor', false, 'rgba(239,68,68,0.4)');
+        const setupHighlighter = (id, color) => {
+            document.getElementById(id).addEventListener('click', () => {
+                document.execCommand('hiliteColor', false, color);
+                document.execCommand('backColor', false, color);
+            });
+        };
+
+        setupHighlighter('btn-hl-red', 'rgba(239,68,68,0.4)');
+        setupHighlighter('btn-hl-yel', 'rgba(245,158,11,0.4)');
+        setupHighlighter('btn-hl-grn', 'rgba(16,185,129,0.4)');
+        setupHighlighter('btn-hl-blu', 'rgba(59,130,246,0.4)');
+        setupHighlighter('btn-hl-pur', 'rgba(168,85,247,0.4)');
+
+        // --- SPLIT PANE RESIZER LOGIC ---
+        const resizer = document.getElementById('main-resizer');
+        const leftRegion = document.getElementById('region-left');
+        const rightRegion = document.getElementById('region-right');
+        let isResizing = false;
+
+        resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.body.style.cursor = 'col-resize';
+            resizer.classList.add('resizing');
         });
 
-        document.getElementById('btn-hl-yel').addEventListener('click', () => {
-            document.execCommand('hiliteColor', false, 'rgba(245,158,11,0.4)');
-            document.execCommand('backColor', false, 'rgba(245,158,11,0.4)');
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            const containerWidth = document.querySelector('main').getBoundingClientRect().width;
+            const mouseX = e.clientX;
+            const leftPercent = (mouseX / containerWidth) * 100;
+
+            if (leftPercent > 20 && leftPercent < 80) {
+                leftRegion.style.flex = leftPercent;
+                rightRegion.style.flex = 100 - leftPercent;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isResizing = false;
+            document.body.style.cursor = 'default';
+            resizer.classList.remove('resizing');
         });
 
         document.getElementById('btn-clear-notify').addEventListener('click', () => {
