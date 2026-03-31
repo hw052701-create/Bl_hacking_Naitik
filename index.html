@@ -138,6 +138,7 @@
             color: #a1a1aa;
             display: flex;
             justify-content: space-between;
+            align-items: center;
         }
 
         #terminal-output {
@@ -641,7 +642,12 @@
                 btnConnect.style.display = "none";
                 btnDisconnect.style.display = "block";
                 document.getElementById('btn-ninja').style.display = "block";
-                document.getElementById('btn-sniper').style.display = "block";
+                const btnSniper = document.getElementById('btn-sniper');
+                btnSniper.style.display = "block";
+                btnSniper.classList.remove('btn-red');
+                btnSniper.classList.add('btn-purple');
+                btnSniper.innerText = "Sniper Mode";
+
                 serialInput.disabled = false;
                 serialInput.focus();
 
@@ -856,6 +862,22 @@
                 if (line.includes("AUTH_FAIL")) {
                     document.getElementById('auth-message').innerText = "[!] INVALID PASSCODE ACCESS DENIED";
                     return;
+                }
+
+                // --- NEW: Hardware Capability Discovery ---
+                if (line.includes("[SYS] HW_CAPS: CODED_PHY_UNSUPPORTED")) {
+                    const btnSniper = document.getElementById('btn-sniper');
+                    btnSniper.classList.remove('btn-purple');
+                    btnSniper.classList.add('btn-red');
+                    btnSniper.innerText = "⚠️ Sniper (Limited)";
+                    printToTerminal("\n[!] HARDWARE NOTICE: Your ESP32 is a Standard Model (BLE 4.2). Sniper Mode (Coded PHY) is locked until you upgrade to ESP32-S3 hardware.", true);
+                }
+                if (line.includes("[SYS] HW_CAPS: CODED_PHY_SUPPORTED")) {
+                    const btnSniper = document.getElementById('btn-sniper');
+                    btnSniper.classList.remove('btn-red');
+                    btnSniper.classList.add('btn-purple');
+                    btnSniper.innerText = "🎯 Sniper (Verified)";
+                    printToTerminal("\n[+] HARDWARE VERIFIED: BLE 5.0 Coded PHY Support Detected. Long-Range Standoff Active.", true);
                 }
 
                 printToTerminal(line, false);
