@@ -138,7 +138,6 @@
             color: #a1a1aa;
             display: flex;
             justify-content: space-between;
-            align-items: center;
         }
 
         #terminal-output {
@@ -642,12 +641,7 @@
                 btnConnect.style.display = "none";
                 btnDisconnect.style.display = "block";
                 document.getElementById('btn-ninja').style.display = "block";
-                const btnSniper = document.getElementById('btn-sniper');
-                btnSniper.style.display = "block";
-                btnSniper.classList.remove('btn-red');
-                btnSniper.classList.add('btn-purple');
-                btnSniper.innerText = "Sniper Mode";
-
+                document.getElementById('btn-sniper').style.display = "block";
                 serialInput.disabled = false;
                 serialInput.focus();
 
@@ -687,39 +681,27 @@
 
         async function disconnectSerial() {
             try {
-                // Clear buffers to prevent zombie data on reconnect
-                lineBuffer = "";
-                if (flushTimer) clearTimeout(flushTimer);
-                currentTarget = null;
-
                 // 1. Teardown Reader
-                try {
-                    if (reader) {
-                        await reader.cancel().catch(() => { });
-                        if (inputDone) await inputDone.catch(() => { });
-                        reader = null;
-                        inputDone = null;
-                    }
-                } catch (e) { console.error("Reader cleanup error:", e); }
+                if (reader) {
+                    await reader.cancel();
+                    await inputDone.catch(() => { });
+                    reader = null;
+                    inputDone = null;
+                }
 
                 // 2. Teardown Writer
-                try {
-                    if (outputStream) {
-                        const writer = outputStream.getWriter();
-                        await writer.close().catch(() => { });
-                        if (outputDone) await outputDone.catch(() => { });
-                        outputStream = null;
-                        outputDone = null;
-                    }
-                } catch (e) { console.error("Writer cleanup error:", e); }
+                if (outputStream) {
+                    await outputStream.getWriter().close();
+                    await outputDone.catch(() => { });
+                    outputStream = null;
+                    outputDone = null;
+                }
 
-                // 3. Close Port (CRITICAL TO NEVER SKIP)
-                try {
-                    if (port) {
-                        await port.close().catch(() => { });
-                        port = null;
-                    }
-                } catch (e) { console.error("Port close error:", e); }
+                // 3. Close Port
+                if (port) {
+                    await port.close();
+                    port = null;
+                }
             } catch (err) {
                 console.error("Disconnect error:", err);
             } finally {
@@ -876,22 +858,6 @@
                     return;
                 }
 
-                // --- NEW: Hardware Capability Discovery ---
-                if (line.includes("[SYS] HW_CAPS: CODED_PHY_UNSUPPORTED")) {
-                    const btnSniper = document.getElementById('btn-sniper');
-                    btnSniper.classList.remove('btn-purple');
-                    btnSniper.classList.add('btn-red');
-                    btnSniper.innerText = "⚠️ Sniper (Limited)";
-                    printToTerminal("\n[!] HARDWARE NOTICE: Your ESP32 is a Standard Model (BLE 4.2). Sniper Mode (Coded PHY) is locked until you upgrade to ESP32-S3 hardware.", true);
-                }
-                if (line.includes("[SYS] HW_CAPS: CODED_PHY_SUPPORTED")) {
-                    const btnSniper = document.getElementById('btn-sniper');
-                    btnSniper.classList.remove('btn-red');
-                    btnSniper.classList.add('btn-purple');
-                    btnSniper.innerText = "🎯 Sniper (Verified)";
-                    printToTerminal("\n[+] HARDWARE VERIFIED: BLE 5.0 Coded PHY Support Detected. Long-Range Standoff Active.", true);
-                }
-
                 printToTerminal(line, false);
             }
         }
@@ -933,12 +899,8 @@
                     <span class="vendor-badge">TARGET: #${dev.index}</span>
                 </div>
             `;
-            // Dynamically fetch anchor to prevent detachment crashes if screen was cleared
-            const currentAnchor = document.getElementById('anchor');
-            if (currentAnchor) {
-                terminalOutput.insertBefore(card, currentAnchor);
-                terminalOutput.scrollTop = terminalOutput.scrollHeight;
-            }
+            terminalOutput.insertBefore(card, anchor);
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
         }
 
         function renderTargetTable() {
@@ -1032,27 +994,13 @@
 
         // --- Read Loop ---
         async function readLoop() {
-            try {
-                while (true) {
-                    if (!reader) break;
-                    const { value, done } = await reader.read();
-
-                    if (done) {
-                        reader.releaseLock();
-                        break;
-                    }
-
-                    if (value && value.length > 0) {
-                        handleSerialData(value);
-                    } else {
-                        // Failsafe: If stream yields empty fragments on reconnect, 
-                        // yield to main thread to prevent 100% CPU infinite spinning.
-                        await new Promise(r => setTimeout(r, 5));
-                    }
+            while (true) {
+                const { value, done } = await reader.read();
+                if (value) handleSerialData(value);
+                if (done) {
+                    reader.releaseLock();
+                    break;
                 }
-            } catch (error) {
-                console.error("Stream Read Error:", error);
-                if (reader) reader.releaseLock();
             }
         }
 
@@ -1126,12 +1074,10 @@
             }
 
             if (isNotifyStream) {
-                const curNotifyAnchor = document.getElementById('notify-anchor');
-                if (curNotifyAnchor) notifyOutput.insertBefore(div, curNotifyAnchor);
+                notifyOutput.insertBefore(div, notifyAnchor);
                 notifyOutput.scrollTop = notifyOutput.scrollHeight;
             } else {
-                const curAnchor = document.getElementById('anchor');
-                if (curAnchor) terminalOutput.insertBefore(div, curAnchor);
+                terminalOutput.insertBefore(div, anchor);
                 terminalOutput.scrollTop = terminalOutput.scrollHeight;
             }
         }
