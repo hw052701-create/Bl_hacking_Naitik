@@ -693,26 +693,33 @@
                 currentTarget = null;
 
                 // 1. Teardown Reader
-                if (reader) {
-                    await reader.cancel().catch(() => { });
-                    if (inputDone) await inputDone.catch(() => { });
-                    reader = null;
-                    inputDone = null;
-                }
+                try {
+                    if (reader) {
+                        await reader.cancel().catch(() => { });
+                        if (inputDone) await inputDone.catch(() => { });
+                        reader = null;
+                        inputDone = null;
+                    }
+                } catch (e) { console.error("Reader cleanup error:", e); }
 
                 // 2. Teardown Writer
-                if (outputStream) {
-                    await outputStream.getWriter().close();
-                    await outputDone.catch(() => { });
-                    outputStream = null;
-                    outputDone = null;
-                }
+                try {
+                    if (outputStream) {
+                        const writer = outputStream.getWriter();
+                        await writer.close().catch(() => { });
+                        if (outputDone) await outputDone.catch(() => { });
+                        outputStream = null;
+                        outputDone = null;
+                    }
+                } catch (e) { console.error("Writer cleanup error:", e); }
 
-                // 3. Close Port
-                if (port) {
-                    await port.close();
-                    port = null;
-                }
+                // 3. Close Port (CRITICAL TO NEVER SKIP)
+                try {
+                    if (port) {
+                        await port.close().catch(() => { });
+                        port = null;
+                    }
+                } catch (e) { console.error("Port close error:", e); }
             } catch (err) {
                 console.error("Disconnect error:", err);
             } finally {
