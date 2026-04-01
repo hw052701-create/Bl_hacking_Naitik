@@ -16,6 +16,7 @@
             --accent-blue: #3b82f6;
             --border-color: #27272a;
         }
+
         * {
             box-sizing: border-box;
             margin: 0;
@@ -686,10 +687,15 @@
 
         async function disconnectSerial() {
             try {
+                // Clear buffers to prevent zombie data on reconnect
+                lineBuffer = "";
+                if (flushTimer) clearTimeout(flushTimer);
+                currentTarget = null;
+
                 // 1. Teardown Reader
                 if (reader) {
-                    await reader.cancel();
-                    await inputDone.catch(() => { });
+                    await reader.cancel().catch(() => { });
+                    if (inputDone) await inputDone.catch(() => { });
                     reader = null;
                     inputDone = null;
                 }
@@ -1015,13 +1021,19 @@
 
         // --- Read Loop ---
         async function readLoop() {
-            while (true) {
-                const { value, done } = await reader.read();
-                if (value) handleSerialData(value);
-                if (done) {
-                    reader.releaseLock();
-                    break;
+            try {
+                while (true) {
+                    if (!reader) break;
+                    const { value, done } = await reader.read();
+                    if (value) handleSerialData(value);
+                    if (done) {
+                        reader.releaseLock();
+                        break;
+                    }
                 }
+            } catch (error) {
+                console.error("Stream Read Error:", error);
+                if (reader) reader.releaseLock();
             }
         }
 
