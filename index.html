@@ -933,8 +933,12 @@
                     <span class="vendor-badge">TARGET: #${dev.index}</span>
                 </div>
             `;
-            terminalOutput.insertBefore(card, anchor);
-            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+            // Dynamically fetch anchor to prevent detachment crashes if screen was cleared
+            const currentAnchor = document.getElementById('anchor');
+            if (currentAnchor) {
+                terminalOutput.insertBefore(card, currentAnchor);
+                terminalOutput.scrollTop = terminalOutput.scrollHeight;
+            }
         }
 
         function renderTargetTable() {
@@ -1032,10 +1036,18 @@
                 while (true) {
                     if (!reader) break;
                     const { value, done } = await reader.read();
-                    if (value) handleSerialData(value);
+
                     if (done) {
                         reader.releaseLock();
                         break;
+                    }
+
+                    if (value && value.length > 0) {
+                        handleSerialData(value);
+                    } else {
+                        // Failsafe: If stream yields empty fragments on reconnect, 
+                        // yield to main thread to prevent 100% CPU infinite spinning.
+                        await new Promise(r => setTimeout(r, 5));
                     }
                 }
             } catch (error) {
@@ -1114,10 +1126,12 @@
             }
 
             if (isNotifyStream) {
-                notifyOutput.insertBefore(div, notifyAnchor);
+                const curNotifyAnchor = document.getElementById('notify-anchor');
+                if (curNotifyAnchor) notifyOutput.insertBefore(div, curNotifyAnchor);
                 notifyOutput.scrollTop = notifyOutput.scrollHeight;
             } else {
-                terminalOutput.insertBefore(div, anchor);
+                const curAnchor = document.getElementById('anchor');
+                if (curAnchor) terminalOutput.insertBefore(div, curAnchor);
                 terminalOutput.scrollTop = terminalOutput.scrollHeight;
             }
         }
